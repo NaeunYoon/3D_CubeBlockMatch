@@ -35,7 +35,7 @@ public class Convert_3D : MonoBehaviour
         
         
         // Create3Cube(,10, 10);
-        PlayGame("foods", "DragonFruit");
+        PlayGame("Test", "Whale");
 
         
     }

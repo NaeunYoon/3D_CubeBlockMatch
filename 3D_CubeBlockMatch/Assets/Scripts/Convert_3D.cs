@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using System.Linq;
 
 public class Convert_3D : MonoBehaviour
 {
@@ -19,6 +20,12 @@ public class Convert_3D : MonoBehaviour
     //게임보드
     private GameObject[,] _board = null;
     private GameObject[,] _Backboard = null;
+
+    //컬러값을 저장할 리스트 (이미지에서 불러온 컬러값 저장
+    private List<Color> _colorList = new List<Color>();
+    //백블렁셍 저장된 컬러값을 구별할 목적으로 생성
+    private List<Block> _backBlockList = new List<Block>();
+
     void Start()
     {
         //스크린 좌표계의 좌중단 좌표값의 월드좌표의 값을 구한다
@@ -35,7 +42,7 @@ public class Convert_3D : MonoBehaviour
         
         
         // Create3Cube(,10, 10);
-        PlayGame("Test", "Whale");
+        PlayGame("Test", "Slime");
 
         
     }
@@ -54,6 +61,15 @@ public class Convert_3D : MonoBehaviour
             {
                 //게임보드에 큐브가 있으면 삭제한다
                 if(item != null)
+                {
+                    Destroy(item);
+                }
+            }
+
+            foreach (var item in _Backboard)
+            {
+                //백보드에 큐브가 있으면 삭제한다
+                if(item!=null)
                 {
                     Destroy(item);
                 }
@@ -94,7 +110,12 @@ public class Convert_3D : MonoBehaviour
                     obj.name = $"Cube[{i},{j}]";
                     //동적으로 만든 큐브에 부모 오브젝트를 설정한다
                     obj.transform.SetParent(_sMainObject.transform);
-
+                    obj.tag = "CubeBlock"; // 2023-02-11
+                    Block block =obj.GetComponent<Block>();
+                    block.OriginColor = color;
+                    
+                    block.col = i;
+                    block.row = j;
                 
                     obj.transform.position = new Vector3(j, i, 0.0f);
 
@@ -102,6 +123,9 @@ public class Convert_3D : MonoBehaviour
 
                     //게임보드에 생성된 큐브의 참조값을 추가한다
                     _board[i, j] = obj;
+
+                    //컬러 리스트를 만든다
+                    _colorList.Add(color);
 
                     //가로 세로 블럭의 갯수를 계산
                     if(columMin>i)  //최상단
@@ -130,6 +154,14 @@ public class Convert_3D : MonoBehaviour
                 {
                     GameObject backObj = Instantiate(_sCubePrefab);
                     backObj.name = $"CubeBack[{i},{j}]";
+
+                    //위치의 컬러값을 기록한다
+                    Block block = backObj.GetComponent<Block>();
+                    block.OriginColor = color;
+                    block.col = i;
+                    block.row = j;
+
+
                     //컴포넌트 삭제
                     Rigidbody rigidbody= backObj.GetComponent<Rigidbody>();
                     Destroy(rigidbody);
@@ -138,6 +170,10 @@ public class Convert_3D : MonoBehaviour
 
                     backObj.transform.SetParent(_sBackObject.transform);
                     backObj.transform.position = new Vector3(j,i,0.0f);
+
+                    //블럭컴포넌트 하나하나 리스트에 넣는다(백보드상의 블럭컴포넌트 리스트에 저장
+                    _backBlockList.Add(backObj.GetComponent<Block>());
+
                     _Backboard[i,j] = backObj;
 
                 }
@@ -193,10 +229,50 @@ public class Convert_3D : MonoBehaviour
         //계산된 스케일 값ㅇ,로 큐브의 부모 오브젝트를 설정한다.
         _sMainObject.transform.localScale = new Vector3(Xscale, Xscale, Xscale);
         _sBackObject.transform.localScale = new Vector3(Xscale, Xscale, Xscale);
+
+        foreach (var item in _board)
+        {
+            if(item !=null)
+            {
+                item.GetComponent<Block>().OriginScale = item.transform.localScale;
+            }
+        }
+
+
         Vector3 mainPosition = _sMainObject.transform.position;
         _sMainObject.transform.position = new Vector3(mainPosition.x, mainPosition.y + 2f, 0f);
         Vector3 backPosition = _sBackObject.transform.position;
         _sBackObject.transform.position = new Vector3(backPosition.x, backPosition.y + 2f, 0f);
+
+        //컬러리스트에 저장된 중복 컬러 값을 제거한다
+        _colorList = _colorList.Distinct().ToList();
+
+
+        foreach (var item in _backBlockList)
+        {
+            int index = _colorList.FindIndex(x => x == item.OriginColor);
+            item.BlockNumebr = index;
+            item.NumberText = index.ToString();
+
+            _board[item.col, item.row].GetComponent<Block>().NumberText = index.ToString();
+            _board[item.col, item.row].GetComponent<Block>().BlockNumebr = index;
+
+            //백보드상의 블럭에 컬러번호 출력
+            item.ShowNumberText(true);
+
+        }
+
+        //백보드상의 블럭의 위치값을 오리진 포지션에 저장한다
+        foreach (var item in _Backboard)
+        {
+            if(item != null)
+            {
+                item.transform.position = new Vector3(item.transform.position.x, item.transform.position.y, 0f);
+                item.GetComponent<Block>().OriginPos = item.transform.position;
+
+            }
+        }
+
 
         Invoke("Crash", 1f);
 
@@ -282,14 +358,193 @@ public class Convert_3D : MonoBehaviour
                 obj.transform.position = new Vector3(obj.transform.position.x, obj.transform.position.y, -0.001f);
                 obj.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.None;
                 obj.GetComponent<Rigidbody>().useGravity = true;
-                
+
+               Invoke("ResetColliderSize", 0.1f);
             }
         }
     }
 
+    private void ResetColliderSize()
+    {
+        foreach (var obj in _board)
+        {
+            if (obj != null)
+            {
+                var colli = obj.GetComponent<BoxCollider>();
+                colli.size = new Vector3(1.0f, 1.0f, 1.0f);
+            }
+        }
+    }
+
+    private GameObject _target = null;
+    private bool isMouseDrag = false;
+    //클릭된 위치 조정값
+    private const float CLICKYOFFSET = 1.3f;
+    private const float CLICKZOFFSET = -0.5f;
+    private Vector3 _ScreenPosition;
+    private Vector3 _offset;
+    private GameObject ReturnClickObject()
+    {
+
+        //스크린좌표계를 월드좌표로 바꾼 다음에 퍼즐의 블럭 사이즈에 포함되는지 아는 방식으로 하기 힘듬
+        //레이캐스트로 화면을 클릭해서 광성과 겹쳐지는 면을 가지고 있는 오브젝트를 찾아낸다
+
+        GameObject target = null;
+        //화면을 클릭했을떄의 광선을 레이에 저장
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray.origin, ray.direction * 10);
+        foreach (var item in hits)
+        {
+            if(item.collider != null && item.transform.tag == "CubeBlock")
+            {
+                target = item.collider.gameObject;
+                //Destroy(target);
+                break;
+            }
+        }
+            return target;
+    }
+    /// <summary>
+    /// 드래그된 블럭의 컬러값에 새당하는 백보드상의 블럭을듸 텍스트칼라를 변경한다
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="color"></param>
+    private void ChangeBlockColor (int index, Color color)
+    {
+        foreach (var item in _backBlockList)
+        {
+            if(item != null)
+            {
+
+                //if(index == -1)
+                //{
+                //    item.GetComponent<Block>().
+                //}
+
+
+                if(item.GetComponent<Block>().BlockNumebr == index)
+                {
+                    item.GetComponent<Block>().SetNumberTextColor(color);
+
+                }
+            }
+        }
+    }
+    /// <summary>
+    /// 백보드상의 블럭과 타겟 블럿의 위치값과 컬러값이 일치하는지 비교함
+    /// </summary>
+    /// <param name="target"></param>
+    /// <returns></returns>
+    private GameObject IsMatchPositionColorBlock(GameObject target)
+    {
+        foreach (var item in _backBlockList)
+        {
+            if(item.CurrentState == Block.STATE.FIXED &&item.CheckMatchPosition(target) && item.CheckMatchColor(target))
+            {
+                //위치와 컬러가 일치된 블럭이 들어온다 
+                return item.gameObject;
+            }
+        }
+        return null;
+    }
 
     void Update()
     {
-        
+
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            _target = ReturnClickObject();
+
+            if (_target != null)
+            {
+                //클릭된 큐브블럭이 있으면?
+                isMouseDrag = true;
+
+                //큐브를 선택 시 백보드상에 클릭된 큐브의 컬러값과 같은 백보드상의 블럭의 텍스트를 빨간색으로 변경한다
+
+                ChangeBlockColor(_target.GetComponent<Block>().BlockNumebr, Color.red);
+
+                Vector3 clickObjectPosition = _target.transform.position;
+                _target.transform.position = new Vector3(clickObjectPosition.x, clickObjectPosition.y, 0f);
+
+                //큐브블럭이 중력의(물리엔진의) 영향을 받지 않도록 한다.
+                Destroy(_target.GetComponent<Rigidbody>());
+
+                //선택된 블럭의 회전값을 초기화하여 전면이 보이도록 처리
+
+                _target.transform.localEulerAngles = new Vector3(0f, 0f, 0f);
+
+                //선택된 블럭이 클린된 위치보다 위쪽에 표시되도록 처리
+                Vector3 pos = _target.transform.position;
+                _target.transform.position = new Vector3(pos.x, pos.y + CLICKYOFFSET, pos.z + CLICKZOFFSET);
+
+                //선택된 블럭의 스케일을 조절한다
+                _target.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
+
+                //큐브의 스크린상의 좌표값을 구한다
+                _ScreenPosition = Camera.main.WorldToScreenPoint(_target.transform.position);
+
+                _offset = _target.transform.position - Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, _ScreenPosition.z));
+
+
+
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            isMouseDrag = false;
+            //_target = null;
+
+            if(_target != null)
+            {
+                ChangeBlockColor(_target.GetComponent<Block>().BlockNumebr, Color.black);
+                //마우스 클릭시 제거했던 리지드바디를 추가해서 물리 영향을 준다
+                _target.AddComponent<Rigidbody>();
+                _target.transform.localScale = _target.GetComponent<Block>().OriginScale;
+
+
+            }
+            _target = null;
+
+        }
+        //마우스가 클릭된 상태에서 마우스의 이동 시 처리
+        if(isMouseDrag)
+        {
+            Vector3 currentScreenPos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, _ScreenPosition.z);
+            Vector3 currentPos = Camera.main.ScreenToWorldPoint(currentScreenPos) + _offset;
+            if (_target != null)
+            {
+                _target.transform.position = currentPos;
+
+                //드래그된 블럭이 이동할때마다 일치하는 맥보드상의 블럭이 있는지 체크
+                GameObject matchObj = IsMatchPositionColorBlock(_target);
+
+                if(matchObj != null)
+                {
+                    //일치된 큐브블럭을 백보드상에 위치시킨다
+                    _target.transform.position = matchObj.GetComponent<Block>().OriginPos;
+                    _target.transform.localScale = _target.GetComponent<Block>().OriginScale;
+                    matchObj.SetActive(false);
+
+                    //해당 위치에 매칭 되었다고 처리
+                    _target.GetComponent<Block>().CurrentState = Block.STATE.FIXED;
+                    matchObj.GetComponent<Block>().CurrentState = Block.STATE.FIXED;
+
+                    //콜라이드 제거
+                    Destroy(_target.GetComponent<Collider>());
+
+                    ChangeBlockColor(_target.GetComponent<Block>().BlockNumebr, Color.black);
+
+                    _target.GetComponent<Block>().MatchBlockAnimationStart();
+                    _target = null;
+                    isMouseDrag = false;
+                }
+            }
+        }
+
+
+
     }
 }

@@ -4,25 +4,15 @@ using UnityEngine;
 
 public class Block : MonoBehaviour
 {
+    public int col { set; get; }    //세로열 위치
+    public int row { set; get; }    //가로열 위치
     public enum STATE{
+
         STOP,
         MOVE,
         MOVING,
         FIXED
     }
-    //현재 블럭의 상태값 저장
-    public STATE CurrentState { set; get; }
-
-
-    //부여받은 번호를 표시
-    [SerializeField] private TextMesh _sNumberText;
-    //테두리
-    [SerializeField] private GameObject _sEdge;
-
-    
-    public int col { set; get; }    //세로열 위치
-    public int row { set; get; }    //가로열 위치
-
     //블럭 생성시 위치를 저장
     public Vector3 OriginPos { set; get; }
     //블럭 생성시 스케일 값 저장
@@ -45,8 +35,22 @@ public class Block : MonoBehaviour
 
         }
     }
+
+
+    //현재 블럭의 상태값 저장
+    public STATE CurrentState { set; get; }
+
+    //부여받은 번호를 표시(NumbertText)=>프리팹의 텍스트를 가져온다
+    [SerializeField] private TextMesh _sNumberText;
+    //테두리(Edge)=>프리팹의 테두리를 가져온다 (박스엣지 2d sprite 적용)
+    //(2d의 sprite renderer), z 값은 -0.5 로 앞으로 나오게 한다
+    [SerializeField] private GameObject _sEdge;
+
+    
+
     /// <summary>
     /// 큐브에 컬러 인덱스 문자를 출력하는 함수
+    /// 보여주거나 보여주지 않게 처리한다
     /// </summary>
     /// <param name="onoff"></param>
     public void ShowNumberText(bool onoff)
@@ -55,7 +59,7 @@ public class Block : MonoBehaviour
         _sEdge.SetActive(onoff);
     }
     /// <summary>
-    /// 텍스트의 컬러값을 변경하는 함수
+    /// 텍스트의 컬러값을 변경(입력)하는 함수
     /// </summary>
     /// <param name="color"></param>
     public void SetNumberTextColor(Color color)
@@ -63,23 +67,25 @@ public class Block : MonoBehaviour
         _sNumberText.color = color;
     }
 
-    private const float CHECKPOSITIONRANGE = -0.1f;
+    private const float CHECKPOSITIONRANGE = 0.1f; //감도처리
 
     /// <summary>
-    /// 인자로 들어온 블럭과 위치가 같은지 체크한다
+    /// 인자로 들어온 블럭과 위치가 같은지 체크한다 ( 같으면 붙음)
     /// </summary>
     /// <param name="target"></param>
     /// <returns></returns>
-    public bool CheckMatchPosition(GameObject target)
+    public bool CheckMatchPosition(GameObject target)   //인자로 큐브블럭이 들어올거임
     {
+        //백블럭과 메인 블럭의 감도를 조정한다 (트랜스폼에서 가져와도 된다)
+        //네모가 두개 있는데 감도만큼을 뺴고 더한 것임. (네모 영역을 만들어서 그 사이에 들어왔는지 체크함)
         if((OriginPos.x - CHECKPOSITIONRANGE)< target.transform.position.x && 
            (OriginPos.x + CHECKPOSITIONRANGE) > target.transform.position.x &&
             (OriginPos.y - CHECKPOSITIONRANGE) < target.transform.position.y &&
             OriginPos.y + CHECKPOSITIONRANGE > target.transform.position.y) 
         {
-            return true;
+            return true;    //겹침
         }
-        return false;
+        return false;   //안겹침
     }
     /// <summary>
     /// 인자로 전달된 블럭의 컬러와 백보드상의 블럭의 컬러값이 같은지 체크
@@ -88,6 +94,7 @@ public class Block : MonoBehaviour
     /// <returns></returns>
     public bool CheckMatchColor(GameObject target) 
     { 
+        //백보드 블럭에 있는 색과 인자로 전달된 블럭의 색이 같은지 확인한다
         if(OriginColor == target.GetComponent<Block>().OriginColor)
         {
             return true;

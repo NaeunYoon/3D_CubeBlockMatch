@@ -13,8 +13,10 @@ public class BlockManager : MonoBehaviour
     [SerializeField]
     private GameObject _Edge;
 
+    //파티클 표시
     [SerializeField]
     private ParticleSystem _Particle;
+
     void Start()
     {
         

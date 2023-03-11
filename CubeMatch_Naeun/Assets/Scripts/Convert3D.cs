@@ -5,6 +5,9 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
 using Unity.VisualScripting;
+using System;
+using UnityEngine.SocialPlatforms;
+using Unity.Collections.LowLevel.Unsafe;
 
 public class Convert3D : MonoBehaviour
 {
@@ -40,7 +43,7 @@ public class Convert3D : MonoBehaviour
         //만들어진 리스트에 스테이지 데이터를 담는다
         CSV_FileLoad.OnLoadCSV("StageDatas", stageData);
         //출력해보기
-        Debug.Log("StageData.Count "+stageData.Count);
+        Debug.Log("StageData.Count " + stageData.Count);
 
 
         //스크린의 세로 중간값을 구한다(Screen.height 실제 스크림의 높이 값을 가져와서 2로 나눈다)
@@ -54,7 +57,7 @@ public class Convert3D : MonoBehaviour
         _LeftFence.transform.position = new Vector3(-p1.x, LeftFencePos.y, 0f);
 
         //리스트를 임시로 만들어주고
-        
+
 
 
         //PlayGame("Test", "TopSpin");
@@ -75,13 +78,13 @@ public class Convert3D : MonoBehaviour
     {
         #region 보드 생성 전 큐브 삭제하고 초기화하기
         //해당 보드가 널이 아니면 ( 보드에 큐브가 있음 )
-        if (_Board!=null)
+        if (_Board != null)
         {
             //게임보드 초기화
             foreach (var item in _Board)
             {
                 //게임보드에 큐브가 있으면 삭제한다
-                if(item!=null)
+                if (item != null)
                 {
                     Destroy(item.gameObject);
                 }
@@ -90,7 +93,7 @@ public class Convert3D : MonoBehaviour
             foreach (var item in _backBoard)
             {
                 //백보드에 큐브가 있으면 삭제한다
-                if(item !=null)
+                if (item != null)
                 {
                     Destroy(item.gameObject);
                 }
@@ -122,6 +125,9 @@ public class Convert3D : MonoBehaviour
         _Backobj.transform.position = Vector3.zero;
         _Backobj.transform.localScale = Vector3.one;
 
+        //토글 초기화
+        isAllMadeToggle = false;
+
         //화면에 실제 출력되는 이미지 사이즈를 계산하기 위한 값을 저장하는 변수
         //이미지파일에서 픽셀의 색깔값이 투명인 것을 제외하고 출력되는 이미지의 가로 세로 갯수를 계산하기 위함
 
@@ -142,11 +148,11 @@ public class Convert3D : MonoBehaviour
             for (int j = 0; j < width; j++)
             {
                 //인자로 받은 컬러ㅣ 리스트에서 해당 위치의 컬러값을 가져온다
-                Color32 color = colors[i*width+j];
+                Color32 color = colors[i * width + j];
 
                 //////////////////////////////////////////////////////////////////
 
-                if(color.a !=0f)    //컬러의 알파값이 0이 아닌것들만 생성한다
+                if (color.a != 0f)    //컬러의 알파값이 0이 아닌것들만 생성한다
                 {
                     //프리팹을 동적으로 만든다.
                     GameObject obj = Instantiate<GameObject>(_CubePrefab);
@@ -167,10 +173,10 @@ public class Convert3D : MonoBehaviour
                     //위치 잡아주기
                     obj.transform.position = new Vector3(j, i, 0f);
 
-                    obj.GetComponent<MeshRenderer>().material.color= color;
+                    obj.GetComponent<MeshRenderer>().material.color = color;
 
                     //게임보드에 생성된 큐브의 참조값을 추가한다
-                    _Board[i,j] = obj;
+                    _Board[i, j] = obj;
 
                     //읽어온 컬러값을 리스트에 저장한다 ==========================>백보드 매칭 시 사용
                     _colorList.Add(color);
@@ -178,7 +184,7 @@ public class Convert3D : MonoBehaviour
                     //컬러값이 있어야 들어온다 (가로/ 세로 블럭의 갯수를 계산)
 
                     //최상단
-                    if(columnMin > i) //i 는 height 값
+                    if (columnMin > i) //i 는 height 값
                     {
                         columnMin = i;
                     }
@@ -200,7 +206,7 @@ public class Convert3D : MonoBehaviour
                 }
 
                 //백보드 블럭 생성하는 코드 =================================================================
-                if(color.a != 0f)
+                if (color.a != 0f)
                 {
                     GameObject backObj = Instantiate<GameObject>(_CubePrefab);
                     backObj.name = $"Cube_Back{i}{j}";
@@ -236,8 +242,8 @@ public class Convert3D : MonoBehaviour
         }
 
         //큐브들을 화면 가운데로 보정
-        float midXvalue = width/ 2;
-        float midYvalue = height/ 2;
+        float midXvalue = width / 2;
+        float midYvalue = height / 2;
 
         for (int i = 0; i < height; i++)
         {
@@ -247,7 +253,7 @@ public class Convert3D : MonoBehaviour
                 //위에서 블럭이 투명이 아닌 경우에만 생성해서 보드에 집어넣었음
                 //따라서 보드가 널일 경우가 존재함
                 //보드의 최상단, 하단, 좌단, 우단을 구해 셋팅
-                if (_Board[i,j]!=null)
+                if (_Board[i, j] != null)
                 {
                     //불럭의 포지션값을 가져옴
                     Vector3 calPos = _Board[i, j].transform.position;
@@ -262,10 +268,10 @@ public class Convert3D : MonoBehaviour
         //최 좌측에서 최 우측을 빼서 실제 출력되는 비율
         int calColumnCount = columnMax - columnMin + 1;
         //최상단에서 최 하단을 빼서 실제 출력되는 비율
-        int calRowCount = rowMax- rowMin + 1;
+        int calRowCount = rowMax - rowMin + 1;
 
         float xScale = 0f;
-        if(calColumnCount<calRowCount)
+        if (calColumnCount < calRowCount)
         {
             //세로보다 가로가 더 긴 경우에는 가로를 기준으로 잡음
             //유니티 단위체계로 바꾸기 위해 100으로 나눠줌
@@ -280,13 +286,13 @@ public class Convert3D : MonoBehaviour
         }
 
         //xScale값이 0.22f 보다 크면 스케일 값을 고정시킨다
-        if(xScale >0.22f)
+        if (xScale > 0.22f)
         {
             xScale = 0.22f;
         }
 
         //메인오브젝트의 스케일을 새로 설정해준다
-        _MainObject.transform.localScale = new Vector3(xScale,xScale,xScale);
+        _MainObject.transform.localScale = new Vector3(xScale, xScale, xScale);
         _Backobj.transform.localScale = new Vector3(xScale, xScale, xScale);
 
 
@@ -294,7 +300,7 @@ public class Convert3D : MonoBehaviour
         //게임보드상의 블럭의 원래 스케일값을 가지고 있도록 기록한다.
         foreach (var item in _Board)
         {
-            if(item != null)
+            if (item != null)
             {
                 item.GetComponent<BlockManager>().OriginScale = item.transform.localScale;
             }
@@ -330,7 +336,7 @@ public class Convert3D : MonoBehaviour
         //백보드상의 블럭의 위치값을 기록해서 프로퍼티에 저장=======================================>
         foreach (var item in _backBoard)
         {
-            if(item != null)
+            if (item != null)
             {
                 //현재 백보드상에 있는 블럭의 위치값을 기록 한 뒤에
                 item.transform.position = new Vector3(item.transform.position.x, item.transform.position.y, 0f);
@@ -351,11 +357,11 @@ public class Convert3D : MonoBehaviour
     public void PlayGame(string CategoryName, string ImageName)
     {
         //읽어온 텍스쳐를 저장할 참조형 변수 생성
-        Texture2D texture= null;
+        Texture2D texture = null;
         //이미지 경로 생성
         string PATH = "StageImages" + "/" + CategoryName + "/" + ImageName;
         //리소스 로드 ( 경로, 읽어올 데이터 타입, 텍스쳐 2d 형태로 형변환해서 텍스쳐에 전달)
-        texture = Resources.Load(PATH,typeof(Texture2D)) as Texture2D;
+        texture = Resources.Load(PATH, typeof(Texture2D)) as Texture2D;
         //색을 입힐 함수 호출
         BuildConvert3D(texture);
     }
@@ -376,14 +382,14 @@ public class Convert3D : MonoBehaviour
         //텍스쳐 포맷을 읽어온다
         var textureFormat = texture.format;
         //내가 원하는 포맷이 아니면 경고문 출력
-        if(textureFormat != TextureFormat.RGBA32)
+        if (textureFormat != TextureFormat.RGBA32)
         {
             Debug.Log("잘못된 textureFormat 입니다");
         }
 
         //읽은 이미지의 사이즈가 다를 수 있음. 맞춰서 보드를 설정해야 한다
         int height = texture.height;
-        int width = texture.width;  
+        int width = texture.width;
 
         //받아온 이미지의 사이즈를 멤버변수에 대입해준다 (앞으로 계속 쓸거임)
         _currentColumn = height;
@@ -429,7 +435,7 @@ public class Convert3D : MonoBehaviour
         foreach (var item in _Board)
         {
             //아이템이 널이 아니면
-            if(item != null)
+            if (item != null)
             {
                 //아이템의 위치를 앞쪽으로 배치하고
                 item.transform.position = new Vector3(item.transform.position.x, item.transform.position.y, -0.1f);
@@ -447,10 +453,10 @@ public class Convert3D : MonoBehaviour
     {
         foreach (var item in _Board)
         {
-            if(item != null)
+            if (item != null)
             {
                 BoxCollider collider = item.GetComponent<BoxCollider>();
-            
+
                 collider.size = new Vector3(1f, 1f, 1f);
 
             }
@@ -507,10 +513,10 @@ public class Convert3D : MonoBehaviour
         foreach (var item in _backBoard)
         {
             //백보드 상의 오브젝트가 널이 아니면 (존재하면)
-            if(item !=null)
+            if (item != null)
             {
                 //백보드상의 컬러값이 부여된 번호와 인덱스가 같으면
-                if(item.GetComponent<BlockManager>().OriginNumber == index)
+                if (item.GetComponent<BlockManager>().OriginNumber == index)
                 {
                     //백보드상의 블럭들의 컬러값을 변경한다 ( 블럭 매니저에 있는 함수 호출한다)
                     item.GetComponent<BlockManager>().SetNumberTextColor(color);
@@ -529,7 +535,7 @@ public class Convert3D : MonoBehaviour
             //백블럭상에는 널이 없음 (위치만 체크) => 그러나 위치만 체크하는건 의미가 없음 (컬러값도체크)
             //백보드상의 블럭이 이미 fixed가 아니어야 함 (fixed가 아닌 블럭만 처리)
             if (item.CurrentState != BlockManager.STATE.FIXED &&
-                item.CheckMathchPos(target) && 
+                item.CheckMathchPos(target) &&
                 item.CheckMatchColor(target))
             {
                 //위치가 일치된 블럭을 리턴한다
@@ -557,6 +563,21 @@ public class Convert3D : MonoBehaviour
     //보드상의 블럭을 모두 맞췄는지 확인하는 필드-------------------------------------
     private bool isAllMadeToggle = false;
 
+    public enum ItemType
+    {
+        STEP,   //하나씩 처리
+        MAGNET, //주변에 있는 것들 처리
+        AUTO    //한꺼번에 처리
+    }
+    //아이템 타입에 따른 플레이
+    [SerializeField]
+    private ItemType Type = ItemType.STEP;
+    public ItemType type
+    {
+        set { type = value; }
+        get { return Type; }
+    }
+
     /// <summary>
     /// 마우스 클릭 이벤트 처리---------------------------------------------
     /// </summary>
@@ -571,33 +592,45 @@ public class Convert3D : MonoBehaviour
             //리턴된 오브젝트가 널이 아니면 => 클릭된 큐브 블럭이 있으면
             if (target != null)
             {
-                //마우스 드래그 상태로 설정
-                isMouseDrag = true;
+                //블럭을 찍기만 하면 백블럭으로 달라붙음
+                if (Type == ItemType.MAGNET)
+                {
+                    if(target.GetComponent<BlockManager>().CurrentState != BlockManager.STATE.FIXED)
+                    {
+                        AllBlockFixedPos(target.GetComponent<BlockManager>().OriginNumber);
+                    }
+                    target = null;
+                    isMouseDrag= false;
+                }
+                else if(Type == ItemType.STEP)
+                {
+                    //마우스 드래그 상태로 설정
+                    isMouseDrag = true;
+                    //큐브를 선택 시 백보드 상에 해당 클릭된 큐브의 컬러값과 같은
+                    //백보드 상의 블럭 텍스트 색을 변경
+                    ChangeBlockTextColor(target.GetComponent<BlockManager>().OriginNumber, Color.red);
 
-                //큐브를 선택 시 백보드 상에 해당 클릭된 큐브의 컬러값과 같은
-                //백보드 상의 블럭 텍스트 색을 변경
-                ChangeBlockTextColor(target.GetComponent<BlockManager>().OriginNumber, Color.red);
+                    //타겟의 위치값을 가져와서 앞쪽으로 나오게 해준다
+                    Vector3 clickedObjectPos = target.transform.position;
+                    // 위치값을 바꾸면 물리값이 바뀌어서 떨어지므로 중력을 꺼준다
+                    target.transform.position = new Vector3(clickedObjectPos.x, clickedObjectPos.y, -1f);
+                    //리지드바디를 파괴한다
+                    Destroy(target.GetComponent<Rigidbody>());
+                    //선택된 블럭이 앞면을 보게 회전값을 초기화해준다
+                    target.transform.localEulerAngles = Vector3.zero;
 
-                //타겟의 위치값을 가져와서 앞쪽으로 나오게 해준다
-                Vector3 clickedObjectPos = target.transform.position;
-                // 위치값을 바꾸면 물리값이 바뀌어서 떨어지므로 중력을 꺼준다
-                target.transform.position = new Vector3(clickedObjectPos.x, clickedObjectPos.y, -1f);
-                //리지드바디를 파괴한다
-                Destroy(target.GetComponent<Rigidbody>());
-                //선택된 블럭이 앞면을 보게 회전값을 초기화해준다
-                target.transform.localEulerAngles = Vector3.zero;
+                    //선택된 블럭이 클릭된 위치보다 위쪽에 표시되도록 처리한다 (선택 시)
+                    Vector3 pos = target.transform.position;
+                    target.transform.position = new Vector3(pos.x, pos.y + CLICK_Y_OFFSET, pos.z + CLOCK_Z_OFFSET);
 
-                //선택된 블럭이 클릭된 위치보다 위쪽에 표시되도록 처리한다 (선택 시)
-                Vector3 pos = target.transform.position;
-                target.transform.position = new Vector3(pos.x, pos.y + CLICK_Y_OFFSET, pos.z + CLOCK_Z_OFFSET);
+                    //선택된 블럭의 스케일을 조정한다 (눌렀을 때 앞으로 나오고 커지게)
+                    target.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
 
-                //선택된 블럭의 스케일을 조정한다 (눌렀을 때 앞으로 나오고 커지게)
-                target.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
-
-                //블럭은 월드에 있고, 큐브의 월드 의 좌표값 스크린 좌표로 바꾸어서 저장
-                screenPos = Camera.main.WorldToScreenPoint(target.transform.position);
-                //실제로 클릭한 곳과 월드공간의 차를 오프셋에 저장
-                offset = target.transform.position - Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPos.z));
+                    //블럭은 월드에 있고, 큐브의 월드 의 좌표값 스크린 좌표로 바꾸어서 저장
+                    screenPos = Camera.main.WorldToScreenPoint(target.transform.position);
+                    //실제로 클릭한 곳과 월드공간의 차를 오프셋에 저장
+                    offset = target.transform.position - Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPos.z));
+                }
             }
         }
 
@@ -630,11 +663,9 @@ public class Convert3D : MonoBehaviour
             Vector3 currentScreenPos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPos.z);
             //마우스가 클릭된 위치를 월드 좌표로 바꿔준 다음, 보정한 오프셋을 적용한다
             Vector3 currentPos = Camera.main.ScreenToWorldPoint(currentScreenPos) + offset;
-
             /*
              블럭의 정 중앙을 클릭하는것이 아니기 때문에 중앙으로부터 클릭한 위치까지를 보정했음
              */
-
             if (target != null)
             {
                 target.transform.position = currentPos;
@@ -652,7 +683,6 @@ public class Convert3D : MonoBehaviour
                     target.transform.localScale = target.GetComponent<BlockManager>().OriginScale;
                     //매치확인된 블럭은 비활성화 시켜준다
                     matchObj.SetActive(false);
-
 
                     ///매치완료
                     ///해당 위치에 매칭 되었음을 처리한다
@@ -674,13 +704,17 @@ public class Convert3D : MonoBehaviour
                     //?
                     target.GetComponent<BlockManager>().MatchAnimationStart();
 
+                    
+
                     //타겟을 널로 바꿔주고 드래그 상태를 false로 바꿔준다
                     target = null;
                     isMouseDrag = false;
-
-
                    
-                    RangeMatchItem(_backBoard, _Board, matchObj, _currentRow, _currentColumn);
+                    if(Type == ItemType.AUTO)
+                    {
+                        RangeMatchItem(_backBoard, _Board, matchObj, _currentRow, _currentColumn);
+                    }
+                   
                     
                 }
             }
@@ -730,6 +764,7 @@ public class Convert3D : MonoBehaviour
     /// </summary>
     private void AllBlockComplete()
     {
+        SoundManager.Instance.Congreturation();
         _MainParticle.Play();
         Invoke("ClearAnimation", 1f);
     }
@@ -756,6 +791,7 @@ public class Convert3D : MonoBehaviour
     private void ClearAnimationComplete()
     {
         _MainParticle.Stop();
+        
         _MainObject.GetComponent<Animator>().enabled = true;
         //유니티 애니메이션 실행
         _MainObject.GetComponent<Animator>().SetTrigger("ClearAnim");
@@ -791,8 +827,8 @@ public class Convert3D : MonoBehaviour
     /// <param name="width"></param>
     /// <param name="height"></param>
     /// <returns></returns>
-
-    private int RangeMatchItem(GameObject[,] backBoard, GameObject[,] board,
+    
+    public int RangeMatchItem(GameObject[,] backBoard, GameObject[,] board,
                                 GameObject matchObject,int width, int height)
     {
         //매치오브젝트에 블럭이 들어와 있으면
@@ -855,10 +891,11 @@ public class Convert3D : MonoBehaviour
                 item.GetComponent<BlockManager>().MoveToFixedPos(_matchObject[cnt++]);
             }
         }
-
         return _matchObject.Count;
-
     }
+    
+    
+
     /// <summary>
     /// 블럭의 재귀호출을 위해 이용하는 열거형
     /// </summary>
@@ -924,11 +961,42 @@ public class Convert3D : MonoBehaviour
         
     }
     /// <summary>
-    /// 
+    /// 보드상의 선택된 블럭 컬러(인덱스)와 맞는 블럭을 찾아서 모두 매치
     /// </summary>
-    private void AllBlockFixedPos()
+    private void AllBlockFixedPos(int index)
     {
+        List<GameObject> matchIndexBlockList = new List<GameObject>();
+        for (int i = 0; i < _currentColumn; i++)
+        {
+            for (int j = 0; j < _currentRow; j++)
+            {
+                if (_backBoard[i,j]!=null)
+                {
+                    BlockManager block = _backBoard[i,j].GetComponent<BlockManager>();
+                    if(block.CurrentState != BlockManager.STATE.FIXED&& block.OriginNumber == index)
+                    {
+                        matchIndexBlockList.Add(_backBoard[i,j]);
+                    }
+                }
+            }
+        }
 
+        int cnt = 0;
+        for (int i = 0; i < _currentColumn; i++)
+        {
+            for (int j = 0; j < _currentRow; j++)
+            {
+                if (_Board[i,j] !=null)
+                {
+                    if (_Board[i,j].GetComponent<BlockManager>().CurrentState != BlockManager.STATE.FIXED
+                        && _Board[i,j].GetComponent<BlockManager>().OriginNumber ==index)
+                    {
+                        Destroy(_Board[i, j].GetComponent<Collider>());
+                        _Board[i, j].GetComponent<BlockManager>().MoveToFixedPos(matchIndexBlockList[cnt++]);
+                    }
+                }
+            }
+        }
     }
 
 

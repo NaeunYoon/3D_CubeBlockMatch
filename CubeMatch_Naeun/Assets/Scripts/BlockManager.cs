@@ -179,6 +179,7 @@ public class BlockManager : MonoBehaviour
     /// </summary>
     public void MoveToFixedPosComplete()
     {
+        SoundManager.Instance.Play_BlockClick();
         //날아간 블럭의 회전값을 초기화한다
         this.gameObject.transform.localEulerAngles = Vector3.zero;
         //그리는 순서 조정
@@ -194,5 +195,6 @@ public class BlockManager : MonoBehaviour
     }
 
 
+    
 
 }
